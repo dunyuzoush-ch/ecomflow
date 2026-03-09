@@ -1,0 +1,84 @@
+# EcomFlow Daily Pipeline
+
+# 每日自动化流水线
+
+## 时间调度
+
+| 时间 | Agent | 任务 |
+|------|-------|------|
+| 00:00 | niche_agent | 赛道发现 |
+| 02:00 | product_agent | 产品生成 |
+| 04:00 | product_agent | Shopify发布 |
+| 08:00 | content_agent | SEO文章发布 |
+| 12:00 | traffic_agent | 社媒发布 |
+| 18:00 | analytics_agent | 数据优化 |
+
+## 工作流
+
+### 1. Trend Discovery (00:00)
+```
+trend_service.discoverTrends()
+  → 抓取 TikTok/Amazon/Pinterest
+  → 计算趋势分数
+  → 筛选 Top 20
+  → 保存 daily_trending_products.json
+```
+
+### 2. Product Generation (02:00)
+```
+product_service.dailyProductGeneration()
+  → 读取趋势产品
+  → AI生成标题/描述
+  → 生成图片
+  → 保存 generated_products.json
+```
+
+### 3. Shopify Publish (04:00)
+```
+product_service.publishToShopify()
+  → 读取生成产品
+  → 调用Shopify API
+  → 发布产品
+  → 保存 published_products.json
+```
+
+### 4. SEO Content (08:00)
+```
+content_service.generateSEOArticles()
+  → 关键词研究
+  → AI生成文章
+  → 发布到WordPress
+  → 内部链接优化
+```
+
+### 5. Social Traffic (12:00)
+```
+traffic_service.postToSocial()
+  → 生成TikTok视频脚本
+  → 生成Tweet内容
+  → 生成Pinterest图
+  → 自动发布
+```
+
+### 6. Analytics Optimization (18:00)
+```
+analytics_service.optimize()
+  → 分析流量/转化
+  → 识别低效产品
+  → AI优化建议
+  → 自动执行优化
+```
+
+## 质量门禁
+
+- [ ] Trend: 至少20个潜力产品
+- [ ] Product: 至少10个成功发布
+- [ ] Content: 至少5篇SEO文章
+- [ ] Traffic: 至少30条社媒内容
+- [ ] Analytics: ROAS > 3
+
+## 扩展监控
+
+- 邮件通知失败任务
+- Slack报警
+- 每日报告生成
