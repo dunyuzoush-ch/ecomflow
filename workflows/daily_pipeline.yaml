@@ -1,84 +1,467 @@
-# EcomFlow Daily Pipeline
+# EcomFlow Pro Daily Pipeline
+# 每日自动化流水线 - 完整版
 
-# 每日自动化流水线
+name: EcomFlow Pro Daily Automation
+version: 1.0.0
+description: 完整的电商自动化每日工作流
 
 ## 时间调度
 
-| 时间 | Agent | 任务 |
-|------|-------|------|
-| 00:00 | niche_agent | 赛道发现 |
-| 02:00 | product_agent | 产品生成 |
-| 04:00 | product_agent | Shopify发布 |
-| 08:00 | content_agent | SEO文章发布 |
-| 12:00 | traffic_agent | 社媒发布 |
-| 18:00 | analytics_agent | 数据优化 |
+| 时间 | Agent | 任务 | 产出 |
+|------|-------|------|------|
+| 00:00 | niche_agent | 趋势发现 | 20个潜力niche |
+| 01:00 | brand_agent | 品牌生成(如有新niche) | 品牌kit |
+| 02:00 | product_agent | 产品生成 | 20-50个产品 |
+| 04:00 | product_agent | Shopify发布 | 已发布产品 |
+| 06:00 | ads_agent | 广告测试启动 | 15个测试广告 |
+| 08:00 | content_agent | SEO文章 | 10篇SEO文章 |
+| 12:00 | traffic_agent | 社媒发布 | 100条内容 |
+| 15:00 | traffic_agent | TikTok视频 | 20个视频 |
+| 18:00 | analytics_agent | 数据分析+优化 | 优化报告 |
+| 20:00 | ads_agent | 广告优化 | 扩量/暂停决策 |
 
-## 工作流
+---
 
-### 1. Trend Discovery (00:00)
-```
-trend_service.discoverTrends()
-  → 抓取 TikTok/Amazon/Pinterest
-  → 计算趋势分数
-  → 筛选 Top 20
-  → 保存 daily_trending_products.json
-```
+## 详细工作流
 
-### 2. Product Generation (02:00)
-```
-product_service.dailyProductGeneration()
-  → 读取趋势产品
-  → AI生成标题/描述
-  → 生成图片
-  → 保存 generated_products.json
-```
+### 1. Trend Discovery (00:00) - niche_agent
 
-### 3. Shopify Publish (04:00)
-```
-product_service.publishToShopify()
-  → 读取生成产品
-  → 调用Shopify API
-  → 发布产品
-  → 保存 published_products.json
-```
+```yaml
+agent: niche_agent
+service: trend-service
+action: discoverTrends
 
-### 4. SEO Content (08:00)
-```
-content_service.generateSEOArticles()
-  → 关键词研究
-  → AI生成文章
-  → 发布到WordPress
-  → 内部链接优化
-```
+steps:
+  - tiktok_trending:
+      method: fetchTikTokTrends
+      output: tiktok_products.json
+      
+  - amazon_bestsellers:
+      method: fetchAmazonBestsellers
+      output: amazon_products.json
+      
+  - pinterest_trends:
+      method: fetchPinterestTrends
+      output: pinterest_products.json
+      
+  - scoring:
+      method: calculateNicheScore
+      input: [tiktok_products, amazon_products, pinterest_products]
+      output: scored_niches.json
+      
+  - filter:
+      method: applyFilters
+      rules:
+        - price: $15-$80
+        - margin: > $15
+        - volume: > 10k/month
+      output: daily_trending_products.json
 
-### 5. Social Traffic (12:00)
-```
-traffic_service.postToSocial()
-  → 生成TikTok视频脚本
-  → 生成Tweet内容
-  → 生成Pinterest图
-  → 自动发布
-```
-
-### 6. Analytics Optimization (18:00)
-```
-analytics_service.optimize()
-  → 分析流量/转化
-  → 识别低效产品
-  → AI优化建议
-  → 自动执行优化
+output:
+  - daily_trending_products.json (20个产品)
+  - niche_scores.json
 ```
 
-## 质量门禁
+### 2. Brand Generation (01:00) - brand_agent (条件触发)
 
-- [ ] Trend: 至少20个潜力产品
-- [ ] Product: 至少10个成功发布
-- [ ] Content: 至少5篇SEO文章
-- [ ] Traffic: 至少30条社媒内容
-- [ ] Analytics: ROAS > 3
+```yaml
+agent: brand_agent
+service: brand-service
+condition: new_niche_detected
+action: generateBrand
 
-## 扩展监控
+steps:
+  - name_generation:
+      method: generateBrandName
+      input: niche_name
+      output: brand_name
+      
+  - story_generation:
+      method: generateBrandStory
+      input: [brand_name, niche]
+      output: brand_story
+      
+  - visual_identity:
+      method: generateLogo
+      output: logo.png
+      
+  - shopify_store:
+      method: createShopifyStore
+      output: store_config.json
 
-- 邮件通知失败任务
-- Slack报警
-- 每日报告生成
+output:
+  - brand_kit/
+  - store_config.json
+```
+
+### 3. Product Generation (02:00) - product_agent
+
+```yaml
+agent: product_agent
+service: product-service
+action: generateProducts
+
+steps:
+  - read_trends:
+      input: daily_trending_products.json
+      
+  - generate_title:
+      method: generateProductTitle
+      output: titles.json
+      
+  - generate_description:
+      method: generateProductDescription
+      output: descriptions.json
+      
+  - generate_images:
+      method: generateProductImages
+      output: images/
+      sizes: [2048x2048, 1200x630, 1080x1920]
+      
+  - generate_variants:
+      method: generateVariants
+      output: variants.json
+      
+  - prepare_shopify:
+      method: prepareProductData
+      output: products_for_shopify.json
+
+output:
+  - generated_products.json (20-50个)
+  - product_images/
+```
+
+### 4. Shopify Publish (04:00) - product_agent
+
+```yaml
+agent: product_agent
+service: product-service
+action: publishToShopify
+
+steps:
+  - authenticate:
+      method: shopifyAuth
+      token: SHOPIFY_ACCESS_TOKEN
+      
+  - create_products:
+      method: createProducts
+      input: products_for_shopify.json
+      api: POST /admin/api/2024-01/products.json
+      
+  - upload_images:
+      method: uploadImages
+      product_id: {response.id}
+      
+  - set_inventory:
+      method: setInventory
+      quantity: 100
+      
+  - publish:
+      method: setProductStatus
+      status: active
+
+output:
+  - published_products.json
+  - shopify_product_ids.json
+  - publish_report.json
+```
+
+### 5. Ads Launch (06:00) - ads_agent
+
+```yaml
+agent: ads_agent
+service: ads-service
+action: launchTestAds
+
+steps:
+  - select_products:
+      input: published_products.json
+      count: 5
+      
+  - generate_creatives:
+      method: generateAdCreatives
+      output: ad_creatives.json
+      
+  - create_meta_ads:
+      method: createMetaCampaign
+      budget: $10/day
+      output: meta_ad_ids.json
+      
+  - create_tiktok_ads:
+      method: createTikTokCampaign
+      budget: $10/day
+      output: tiktok_ad_ids.json
+      
+  - create_google_ads:
+      method: createGoogleCampaign
+      budget: $10/day
+      output: google_ad_ids.json
+
+output:
+  - active_ads.json (15个测试广告)
+  - ads_launch_report.json
+
+error_handling:
+  - if api_error: retry 3 times
+  - if budget_exceeded: pause campaign
+```
+
+### 6. SEO Content (08:00) - content_agent
+
+```yaml
+agent: content_agent
+service: content-service
+action: generateAndPublishSEO
+
+steps:
+  - keyword_research:
+      method: discoverKeywords
+      source: trending_products
+      count: 10
+      
+  - generate_articles:
+      method: generateSEOArticle
+      word_count: 2000-3000
+      structure: [intro, products, guide, faq, conclusion]
+      output: articles.json
+      
+  - generate_internal_links:
+      method: generateInternalLinks
+      products: published_products.json
+      
+  - publish_wordpress:
+      method: publishToWordPress
+      url: WORDPRESS_URL
+      output: published_articles.json
+      
+  - update_sitemap:
+      method: updateXMLSitemap
+
+output:
+  - generated_articles.json (10篇)
+  - published_articles.json
+  - seo_report.json
+```
+
+### 7. Social Traffic (12:00) - traffic_agent
+
+```yaml
+agent: traffic_agent
+service: traffic-service
+action: postToSocial
+
+# Twitter/X Posts
+twitter:
+  - count: 50
+  - method: generateAndPostTweet
+  - content_types: [product_showcase, deals, engagement]
+  
+# Pinterest Pins
+pinterest:
+  - count: 30
+  - method: generateAndPostPin
+  - sizes: [1000x1500]
+  
+# TikTok Videos (单独时段)
+tiktok:
+  - time: 15:00
+  - count: 20
+  - method: generateVideoScript
+  - pipeline: [script, tts, video, upload]
+
+output:
+  - social_posts.json
+  - tiktok_videos.json
+  - traffic_report.json
+```
+
+### 8. Analytics & Optimization (18:00) - analytics_agent
+
+```yaml
+agent: analytics_agent
+service: analytics-service
+action: analyzeAndOptimize
+
+steps:
+  - collect_shopify:
+      method: getShopifyMetrics
+      metrics: [orders, revenue, conversion_rate]
+      
+  - collect_ads:
+      method: getAdsPerformance
+      platforms: [meta, tiktok, google]
+      metrics: [spend, impressions, clicks, conversions, roas]
+      
+  - collect_traffic:
+      method: getTrafficMetrics
+      sources: [seo, social, ads]
+      
+  - generate_insights:
+      method: generateInsights
+      output: insights.json
+      
+  - auto_optimize:
+      method: autoOptimize
+      rules:
+        - if roas < 2: pause_ad
+        - if roas > 3: scale_budget
+        - if conversion < 1.5: replace_images
+        - if ctr < 2: rewrite_headlines
+
+output:
+  - analytics_report.json
+  - optimization_actions.json
+  - daily_summary.json
+```
+
+### 9. Ads Optimization (20:00) - ads_agent
+
+```yaml
+agent: ads_agent
+service: ads-service
+action: optimizeAds
+
+steps:
+  - get_performance:
+      method: getAllAdsPerformance
+      
+  - evaluate_roas:
+      method: evaluateAgainstRules
+      rules:
+        - min_roas: 2.0
+        - scale_roas: 3.0
+        
+  - execute_actions:
+      - if scale: increase_budget (1.5x)
+      - if pause: set_status(PAUSED)
+      - if keep: continue_monitoring
+
+output:
+  - ads_optimization_report.json
+  - budget_changes.json
+```
+
+---
+
+## 质量门禁 (Quality Gates)
+
+| 指标 | 最低要求 | 严重阈值 |
+|------|----------|----------|
+| 趋势产品 | ≥20个 | <10 |
+| 发布产品 | ≥10个 | <5 |
+| SEO文章 | ≥5篇 | <2 |
+| 社媒内容 | ≥30条 | <10 |
+| 测试广告 | ≥10个 | <5 |
+| 平均ROAS | ≥2.0 | <1.5 |
+
+---
+
+## 错误处理
+
+```yaml
+error_handling:
+  retry_policy:
+    max_retries: 3
+    backoff: exponential
+    initial_delay: 1000ms
+    
+  alerts:
+    - on_failure: sendSlackNotification
+    - on_critical: sendEmail
+    - on_blocking: stop_pipeline
+    
+  fallback:
+    - if shopify_fail: queue_for_retry
+    - if ads_fail: continue_without_ads
+    - if wordpress_fail: save_locally
+```
+
+---
+
+## 监控与报告
+
+```yaml
+monitoring:
+  dashboard:
+    - real_time_metrics
+    - pipeline_status
+    - error_logs
+    
+  daily_report:
+    - total_products_published
+    - total_content_generated
+    - ads_performance
+    - revenue_metrics
+    
+  notifications:
+    - slack: #ecomflow-alerts
+    - email: dunyuzoush@gmail.com
+```
+
+---
+
+## 执行示例
+
+```bash
+# 运行完整流水线
+npm run pipeline:daily
+
+# 运行单个阶段
+npm run pipeline:trends
+npm run pipeline:products
+npm run pipeline:content
+npm run pipeline:traffic
+npm run pipeline:ads
+npm run pipeline:analytics
+
+# 查看状态
+npm run pipeline:status
+```
+
+---
+
+## Cron 调度配置
+
+```yaml
+# OpenClaw Cron 调度
+cron:
+  timezone: Asia/Shanghai
+  
+  jobs:
+    - name: daily_trends
+      schedule: "0 0 * * *"  # 00:00
+      task: pipeline:trends
+      
+    - name: daily_products
+      schedule: "0 2 * * *"  # 02:00
+      task: pipeline:products
+      
+    - name: daily_shopify
+      schedule: "0 4 * * *"  # 04:00
+      task: pipeline:publish
+      
+    - name: daily_ads_launch
+      schedule: "0 6 * * *"  # 06:00
+      task: pipeline:ads:launch
+      
+    - name: daily_seo
+      schedule: "0 8 * * *"  # 08:00
+      task: pipeline:content
+      
+    - name: daily_social
+      schedule: "0 12 * * *"  # 12:00
+      task: pipeline:traffic
+      
+    - name: daily_analytics
+      schedule: "0 18 * * *"  # 18:00
+      task: pipeline:analytics
+      
+    - name: daily_ads_optimize
+      schedule: "0 20 * * *"  # 20:00
+      task: pipeline:ads:optimize
+```
+
+---
+
+版本: 1.0.0
+更新: 2026-03-10

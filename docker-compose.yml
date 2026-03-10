@@ -1,0 +1,110 @@
+version: '3.8'
+
+name: ecomflow-pro
+
+services:
+  # 主应用
+  ecomflow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ecomflow/pro:latest
+    container_name: ecomflow
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./services:/app/services
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://ecomflow:ecomflow_secure_pass@postgres:5432/ecomflow
+      - REDIS_URL=redis://redis:6379
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # 数据库
+  postgres:
+    image: postgres:15-alpine
+    container_name: ecomflow-db
+    environment:
+      POSTGRES_DB: ecomflow
+      POSTGRES_USER: ecomflow
+      POSTGRES_PASSWORD: ecomflow_secure_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecomflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 缓存/队列
+  redis:
+    image: redis:7-alpine
+    container_name: ecomflow-redis
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 可选: WordPress (需要先配置)
+  # wordpress:
+  #   image: wordpress:php8.2
+  #   container_name: ecomflow-wp
+  #   ports:
+  #     - "8080:80"
+  #   volumes:
+  #     - wp_data:/var/www/html
+  #   environment:
+  #     - WORDPRESS_DB_HOST=postgres
+  #     - WORDPRESS_DB_USER=ecomflow
+  #     - WORDPRESS_DB_PASSWORD=ecomflow_secure_pass
+  #     - WORDPRESS_DB_NAME=wordpress
+  #   depends_on:
+  #     - postgres
+  #   restart: unless-stopped
+
+  # 可选: pgAdmin (数据库管理)
+  # pgadmin:
+  #   image: dpage/pgadmin4:latest
+  #   container_name: ecomflow-pgadmin
+  #   ports:
+  #     - "5050:80"
+  #   environment:
+  #     - PGADMIN_DEFAULT_EMAIL=admin@ecomflow.pro
+  #     - PGADMIN_DEFAULT_PASSWORD=admin123
+  #   volumes:
+  #     - pgadmin_data:/var/lib/pgadmin
+  #   depends_on:
+  #     - postgres
+  #   restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  # wp_data:
+  # pgadmin_data:
+
+networks:
+  default:
+    name: ecomflow-network
