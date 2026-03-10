@@ -1,402 +1,424 @@
 # EcomFlow Pro - AI电商超级工厂系统设计文档
 
-> 版本：v1.0
+> 版本：v2.0 (修订版)
 > 日期：2026-03-10
 > 目标：12个月 $10M GMV
 
 ---
 
-## 一、产品命名
+## 一、产品定位
 
-**产品名称：EcomFlow Pro**
+### 1.1 产品名称
+
+**EcomFlow Pro** - AI电商超级工厂
 
 **Slogan：** 全自动AI电商矩阵 - 一个人就是一支电商团队
 
-**定位：** 面向跨境电商从业者的端到端自动化运营系统
+### 1.2 目标用户
+
+| 级别 | 用户群体 | 需求 |
+|------|----------|------|
+| **Primary** | Shopify独立站卖家 | 自动化选品、铺货、内容、流量 |
+| **Primary** | 跨境Dropshipping卖家 | 批量选品、快速上新 |
+| **Primary** | POD卖家 | 设计自动生成、自动化运营 |
+| **Secondary** | 内容联盟营销者 | SEO内容工厂、流量分发 |
+| **Secondary** | 自动化营销团队 | 多店铺管理、矩阵运营 |
+
+### 1.3 核心卖点
+
+| # | 卖点 | 说明 |
+|---|------|------|
+| 1 | **Product Discovery AI** | 自动发现50+/天潜力产品 |
+| 2 | **Content Factory AI** | 批量生成SEO文章+社媒内容 |
+| 3 | **Traffic Automation** | TikTok/X/Pinterest/广告全自动 |
+| 4 | **Multi-store Scaling** | 30+店铺矩阵管理 |
+
+### 1.4 差异化
+
+- 不是工具，是**可盈利的AI运营系统**
+- 不是单店，是**品牌矩阵工厂**
+- 不是手动，是**全自动化**
 
 ---
 
-## 二、产品愿景
+## 二、工程级系统架构
 
-让每一位电商从业者都能通过AI自动化：
-
-- 每天自动发现50+潜力产品
-- 自动生成产品详情和商品图
-- 自动发布到Shopify店铺
-- 自动创建SEO文章和社媒内容
-- 自动获取TikTok/X/Pinterest流量
-- 自动优化转化率和ROAS
-
-**最终实现：一个人管理30+店铺，月GMV $1M+**
-
----
-
-## 三、系统架构
-
-### 3.1 整体架构（5层）
+### 2.1 整体架构（Control Plane + Worker）
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Traffic Layer (流量层)                    │
-│   SEO Site | TikTok | X | Pinterest | Google Ads           │
+│                    Control Plane                            │
+│                   (OpenClaw Core)                          │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────────────┐ │
+│  │ Strategy AI │ │ Agent       │ │ Decision Engine     │ │
+│  │             │ │ Planner     │ │                     │ │
+│  └─────────────┘ └─────────────┘ └─────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+                              ↓ Event Bus
+┌─────────────────────────────────────────────────────────────┐
+│                      Task Queue                             │
+│                   (Redis / Kafka)                          │
 └─────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                   Content Layer (内容层)                     │
-│     Blog Generator | Video Generator | Social Content     │
+│                    Worker Cluster                           │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐ │
+│  │ Trend     │ │ Product   │ │ Content  │ │ Analytics    │ │
+│  │ Worker    │ │ Worker    │ │ Worker   │ │ Worker       │ │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────────┘ │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐ │
+│  │ Traffic  │ │ Ads      │ │ Video    │ │ Store        │ │
+│  │ Worker   │ │ Worker   │ │ Worker   │ │ Factory      │ │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────────┘ │
 └─────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                   Commerce Layer (商务层)                    │
-│      Shopify Store | Product Generator | Price Optimizer   │
+│                     API Gateway                             │
 └─────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                  Fulfillment Layer (履约层)                   │
-│         Print-on-demand | Dropshipping | Warehouse          │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│                   Data Layer (数据层)                         │
-│      Conversion Tracking | Attribution | AI Optimization    │
+│                    External APIs                            │
+│  Shopify │ TikTok │ X │ Pinterest │ Google │ WordPress   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 3.2 数据流
+### 2.2 数据流（Event-Driven）
 
 ```
-Trend Discovery (趋势发现)
-        ↓
-Product Generation (产品生成)
-        ↓
-Store Publish (店铺发布)
-        ↓
-Content Marketing (内容营销)
-        ↓
-Traffic Acquisition (流量获取)
-        ↓
-Conversion (转化)
-        ↓
-Data Feedback (数据反馈)
-        ↓
-AI Optimization (AI优化)
-        ↓
-Scale (规模化)
+Trend Detected (事件)
+       ↓
+Event Bus 发布
+       ↓
+┌──────────────────┐
+│ Product Worker   │ ← 触发
+│ Content Worker   │ ← 触发
+│ Traffic Worker  │ ← 触发
+│ Ads Worker      │ ← 触发
+└──────────────────┘
+       ↓
+Analytics Worker 分析
+       ↓
+Decision Engine 决策
+       ↓
+Scale / Optimize
 ```
 
----
+### 2.3 技术栈
 
-## 四、GMV目标拆解
-
-### 4.1 年度目标
-
-| 指标 | 数值 |
-|------|------|
-| 年度GMV | $10,000,000 |
-| 月度GMV | $833,333 |
-| 日均GMV | $27,778 |
-
-### 4.2 关键假设
-
-| 参数 | 数值 | 计算 |
+| 层级 | 技术 | 说明 |
 |------|------|------|
-| 平均订单金额 (AOV) | $40 | - |
-| 日订单数 | 694 | $27,778 ÷ $40 |
-| 转化率 | 2% | - |
-| 日均访客 | 34,722 | 694 ÷ 2% |
-
-### 4.3 流量来源分布
-
-| 来源 | 占比 | 日访客 |
-|------|------|--------|
-| SEO | 40% | 13,889 |
-| TikTok | 30% | 10,417 |
-| X/Twitter | 20% | 6,944 |
-| Pinterest | 10% | 3,472 |
+| 编排层 | OpenClaw | Agent调度+决策 |
+| 消息队列 | Redis / Kafka | 高吞吐任务队列 |
+| 服务层 | Node.js / Go | Worker服务 |
+| 数据库 | PostgreSQL | 主数据库 |
+| 缓存 | Redis | 热点数据 |
+| 对象存储 | S3 | 图片/视频存储 |
+| 搜索 | Elasticsearch | 日志/分析 |
+| 监控 | Prometheus+Grafana | 可观测性 |
+| 部署 | Kubernetes | 容器编排 |
 
 ---
 
-## 五、核心Agent定义
+## 三、Agent设计（9大Agent）
 
-EcomFlow Pro 由 **6个核心AI Agent** 组成，由OpenClaw统一调度：
+### 3.1 Agent矩阵
 
-| # | Agent | 职责 | 每日任务 | 产出 |
-|---|-------|------|----------|------|
-| 1 | **niche_agent** | 赛道发现与趋势抓取 | 扫描TikTok/Amazon/Etsy/Pinterest | 20个潜力niche |
-| 2 | **product_agent** | 产品生成与店铺发布 | AI生成标题/描述/图片，发布到Shopify | 20-50个产品 |
-| 3 | **content_agent** | SEO文章与社媒内容 | 生成文章+视频脚本+文案 | 10篇SEO + 50条社媒 |
-| 4 | **traffic_agent** | 社媒发布与广告投放 | 发布TikTok/X/Pinterest，测试广告 | 100条内容 |
-| 5 | **analytics_agent** | 数据监控与自动优化 | 分析ROAS/CTR/转化率 | 优化建议报告 |
-| 6 | **brand_agent** | 品牌生成与店铺创建 | niche确定后生成品牌kit | 品牌方案+店铺 |
+| # | Agent | 职责 | 触发条件 |
+|---|-------|------|----------|
+| 1 | **niche_agent** | 赛道发现+趋势抓取 | 定时/事件 |
+| 2 | **brand_agent** | 品牌生成+店铺创建 | 新niche时 |
+| 3 | **product_agent** | 产品生成+Shopify发布 | 趋势触发 |
+| 4 | **content_agent** | SEO文章+社媒内容 | 产品发布后 |
+| 5 | **traffic_agent** | 社媒发布+流量获取 | 内容生成后 |
+| 6 | **ads_agent** | 广告投放+ROAS优化 | 产品上架后 |
+| 7 | **growth_agent** | 爆款复制+跨店扩散 | 高ROAS时 |
+| 8 | **cro_agent** | 转化率优化+A/B测试 | 日常 |
+| 9 | **risk_agent** | 风控+政策合规 | 持续监控 |
 
-### 5.1 Agent协作时间表
+### 3.2 Agent详细职责
 
-| 时间 | Agent | 任务 |
-|------|-------|------|
-| 00:00 | niche_agent | 趋势发现 |
-| 01:00 | brand_agent | 品牌生成（如需要） |
-| 02:00 | product_agent | 产品生成 |
-| 04:00 | product_agent | Shopify发布 |
-| 08:00 | content_agent | SEO文章生成 |
-| 12:00 | traffic_agent | 社媒发布 |
-| 18:00 | analytics_agent | 数据优化 |
+#### growth_agent（新增）
+```
+职责：
+- 分析爆款产品特征
+- 自动复制到新店铺
+- 跨店铺流量扩散
+- 增长策略制定
+
+触发条件：
+- 单品ROAS > 5
+- 转化率 > 3%
+- 自然增长放缓
+```
+
+#### cro_agent（新增）
+```
+职责：
+- A/B测试自动化
+- Landing Page优化
+- 商品图优化
+- 文案优化
+- CTA优化
+
+测试项：
+- 标题变体
+- 主图/附图
+- 价格锚点
+- 描述结构
+- 按钮颜色
+```
+
+#### risk_agent（新增）
+```
+职责：
+- Shopify政策监控
+- TikTok政策监控
+- 广告账户健康度
+- 版权检测
+- 异常行为告警
+
+监控项：
+- 封店风险评分
+- 广告账户健康度
+- 侵权投诉
+- 异常流量
+```
 
 ---
 
-## 六、微服务架构
+## 四、产品生成系统（增加评分）
 
-### 6.1 服务列表
+### 4.1 产品评分模型
 
-```
-ecommerce-factory/
-│
-├ trend-service/          # 趋势抓取
-├ product-service/        # 产品生成
-├ content-service/        # 内容生成
-├ traffic-service/        # 流量分发
-├ ads-service/            # 广告投放
-├ analytics-service/      # 数据分析
-└ fulfillment-service/    # 订单履约
+```javascript
+product_score = 
+  (demand_score * 0.3)        // 需求分
++ (margin_score * 0.25)      // 利润分
++ (competition_score * 0.2)   // 竞争分
++ (social_signal * 0.15)      // 社媒信号分
++ (trend_score * 0.1)        // 趋势分
 ```
 
-### 6.2 技术栈
+### 4.2 评分规则
 
-| 层级 | 技术 |
+| 分数 | 动作 |
 |------|------|
-| 编排层 | OpenClaw |
-| 服务层 | Node.js |
-| 数据库 | PostgreSQL |
-| 队列 | Redis |
-| 存储 | S3/对象存储 |
-| 电商 | Shopify Admin API |
-| SEO | WordPress REST API |
-| 社媒 | TikTok/X/Pinterest API |
-| 广告 | Meta/TikTok/Google Ads API |
+| **≥70** | 直接发布到主店 |
+| **50-69** | 测试店铺验证 |
+| **<50** | 丢弃 |
 
----
-
-## 七、核心功能模块
-
-### 7.1 趋势发现系统 (Niche Intelligence)
-
-**功能：** 自动发现潜力niche
-
-**数据来源：**
-- TikTok trending hashtags
-- Amazon best sellers
-- Etsy trending
-- Pinterest trends
-- Google search trends
-
-**评分模型：**
-```
-niche_score = (search_volume × social_velocity) ÷ competition
-```
-
-**筛选规则：**
-- 价格区间：$15-$80
-- 利润 > $15
-- 搜索量 > 10k/月
-
-**输出：** `daily_niches.json`
-
----
-
-### 7.2 产品生成系统 (Product Factory)
-
-**功能：** 自动创建产品并发布到Shopify
-
-**流程：**
-```
-niche → design generator → image generator → description AI → Shopify publish
-```
-
-**生成内容：**
-- product title
-- description (HTML)
-- SEO keywords
-- product images
-- variants
-- pricing
-
-**API：** `POST /admin/api/2024-01/products.json`
-
-**产能：** 20-50 products/day
-
----
-
-### 7.3 AI图片生成系统
-
-**流程：**
-```
-product data → prompt generator → AI image generator → mockup → Shopify
-```
-
-**输出图片：**
-- Product hero: 2048×2048
-- Lifestyle: 1200×630
-- TikTok cover: 1080×1920
-- Pinterest pin: 1000×1500
-
----
-
-### 7.4 SEO内容系统 (Content Factory)
-
-**功能：** 自动生成SEO文章引流
-
-**发布平台：** WordPress
-
-**每日任务：**
-- keyword research
-- article generation (2000-3000词)
-- internal linking
-- product embed
-
-**文章结构：**
-- SEO keywords
-- buying guide
-- product comparison
-- Shopify CTA
-
-**产能：** 10-20 articles/day
-
-**目标：** 6个月 1000+ SEO pages
-
----
-
-### 7.5 社媒内容系统
-
-**平台：** TikTok, X, Pinterest
-
-**每日生成：**
-
-| 平台 | 数量 |
-|------|------|
-| TikTok videos | 20-30 |
-| Tweets | 50-100 |
-| Pins | 30-60 |
-
-**内容类型：**
-- product demo
-- problem/solution
-- before/after
-- viral hooks
-
----
-
-### 7.6 TikTok视频自动生成 Pipeline
-
-**流程：**
-```
-product → script generator → TTS → AI video → TikTok API
-```
-
-**模块：**
-- scriptGenerator.js
-- voiceGenerator.js
-- videoEditor.js
-- tikTokPublisher.js
-
----
-
-### 7.7 广告自动化系统 (Ads AI)
-
-**平台：** Meta, TikTok, Google
-
-**流程：**
-```
-launch test → collect data → evaluate ROAS → scale winners
-```
-
-**规则：**
-- ROAS > 3 → increase budget
-- ROAS < 2 → pause
-
----
-
-### 7.8 数据优化系统 (Analytics AI)
-
-**监控指标：**
-- traffic
-- CTR
-- conversion rate
-- AOV
-- ROAS
-
-**AI优化规则：**
-```
-if conversion < 1.5% → replace product images
-if CTR < 2% → rewrite headlines
-if ROAS < 2 → pause ad
-```
-
-**周期：** 24小时
-
----
-
-## 八、规模化策略
-
-### 8.1 扩展模型
+### 4.3 每日流程
 
 ```
-1 niche = 1 store = 1 SEO site = 1 social cluster
-```
-
-### 8.2 推荐Niche
-
-- pets (宠物)
-- fitness (健身)
-- camping (露营)
-- kitchen gadgets (厨房用品)
-- gaming (游戏)
-- fashion (时尚)
-
-### 8.3 规模目标
-
-| 阶段 | 时间 | Niches | Stores | 月GMV |
-|------|------|--------|--------|-------|
-| Phase 1 | 0-3月 | 1 | 1 | $10-30K |
-| Phase 2 | 3-6月 | 5 | 5 | $150K |
-| Phase 3 | 6-12月 | 20 | 30 | $1M |
-
-### 8.4 最终目标
-
-```
-30 stores × $35K/month = $1.05M/月 ≈ $12.6M/年
+趋势抓取 (50+)
+    ↓
+评分筛选 (保留20-30)
+    ↓
+测试店铺 (3-5个)
+    ↓
+数据验证 (7天)
+    ↓
+主店发布 (1-3个)
 ```
 
 ---
 
-## 九、数据库设计
+## 五、SEO系统（Content Cluster）
 
-### 9.1 核心表结构
+### 5.1 Topic Cluster SEO
+
+```
+┌─────────────────┐
+│ Pillar Article  │  (核心文章)
+│  "Best Dog     │
+│   Toys 2026"   │
+└────────┬────────┘
+         │
+    ┌────┴────┬──────────┬──────────┐
+    ↓         ↓          ↓          ↓
+┌───────┐ ┌───────┐ ┌───────┐ ┌───────┐
+│Support│ │Support│ │Support│ │Support│
+│Article│ │Article│ │Article│ │Article│
+│ 1     │ │ 2     │ │ 3     │ │ 4     │
+└───┬───┘ └───┬───┘ └───┬───┘ └───┬───┘
+    └─────────┴─────────┴─────────┘
+              ↓
+       Product Pages
+```
+
+### 5.2 内容结构
+
+| 类型 | 数量/周 | 字数 |
+|------|---------|------|
+| Pillar Article | 3 | 5000+ |
+| Supporting Article | 15 | 2000-3000 |
+| Product Page | 50+ | 500-1000 |
+
+### 5.3 AI内容增强
+
+- **Topic Authority**: 主题权威度建模
+- **Internal Linking Graph**: 自动内链图谱
+- **NLP Optimization**: 语义SEO优化
+- **Humanize**: AI内容人性化处理
+
+---
+
+## 六、TikTok自动化（增强版）
+
+### 6.1 视频生成Pipeline
+
+```
+Product Data
+     ↓
+┌──────────────────┐
+│ Hook Generator   │ ← 爆款钩子库
+└────────┬─────────┘
+         ↓
+┌──────────────────┐
+│ Trend Sound      │ ← 热门音乐
+└────────┬─────────┘
+         ↓
+┌──────────────────┐
+│ Script Generator │
+│ (Problem-Proof) │
+└────────┬─────────┘
+         ↓
+┌──────────────────┐
+│ TTS Voice        │
+└────────┬─────────┘
+         ↓
+┌──────────────────┐
+│ AI Video/Clips  │
+└────────┬─────────┘
+         ↓
+┌──────────────────┐
+│ UGC Remix        │ ← 去AI味
+└────────┬─────────┘
+         ↓
+    TikTok Upload
+```
+
+### 6.2 视频结构模板
+
+```
+Hook (0-3s)     → 吸引注意力
+Problem (3-10s)→ 痛点展示
+Product (10-20s)→ 产品介绍
+Proof (20-25s) → 效果证明
+CTA (25-30s)   → 行动号召
+```
+
+---
+
+## 七、数据库设计（完整版）
+
+### 7.1 核心表结构
 
 ```sql
--- niches表
+-- Niches表
 CREATE TABLE niches (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255),
+  category VARCHAR(100),
   score DECIMAL,
   search_volume INTEGER,
   competition VARCHAR(50),
-  status VARCHAR(50),
-  created_at TIMESTAMP
+  status VARCHAR(50), -- active, testing, discarded
+  created_at TIMESTAMP DEFAULT NOW()
 );
 
--- products表
+-- Brands表
+CREATE TABLE brands (
+  id SERIAL PRIMARY KEY,
+  niche_id INTEGER REFERENCES niches(id),
+  name VARCHAR(255),
+  story TEXT,
+  logo_url VARCHAR(500),
+  domain VARCHAR(255),
+  status VARCHAR(50),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Stores表 (新增)
+CREATE TABLE stores (
+  id SERIAL PRIMARY KEY,
+  brand_id INTEGER REFERENCES brands(id),
+  shopify_store_id VARCHAR(100),
+  shopify_domain VARCHAR(255),
+  status VARCHAR(50), -- active, suspended, closed
+  risk_score DECIMAL DEFAULT 100,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Products表
 CREATE TABLE products (
   id SERIAL PRIMARY KEY,
-  niche_id INTEGER,
+  store_id INTEGER REFERENCES stores(id),
+  niche_id INTEGER REFERENCES niches(id),
   title VARCHAR(500),
   description TEXT,
   price DECIMAL,
+  cost DECIMAL,
   images JSONB,
-  shopify_id VARCHAR(100),
-  status VARCHAR(50),
-  created_at TIMESTAMP
+  score DECIMAL,
+  status VARCHAR(50), -- draft, testing, published, paused
+  published_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW()
 );
 
--- articles表
+-- Traffic Sources表 (新增)
+CREATE TABLE traffic_sources (
+  id SERIAL PRIMARY KEY,
+  product_id INTEGER REFERENCES products(id),
+  source VARCHAR(50), -- tiktok, x, pinterest, google, seo
+  campaign VARCHAR(255),
+  utm_params JSONB,
+  clicks INTEGER DEFAULT 0,
+  cost DECIMAL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Ad Creatives表 (新增)
+CREATE TABLE ad_creatives (
+  id SERIAL PRIMARY KEY,
+  product_id INTEGER REFERENCES products(id),
+  platform VARCHAR(50), -- meta, tiktok, google
+  creative_type VARCHAR(50), -- video, image, carousel
+  video_id VARCHAR(100),
+  headline VARCHAR(255),
+  description TEXT,
+  ctr DECIMAL,
+  roas DECIMAL,
+  status VARCHAR(50),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Experiments表 (新增)
+CREATE TABLE experiments (
+  id SERIAL PRIMARY KEY,
+  product_id INTEGER REFERENCES products(id),
+  experiment_type VARCHAR(50), -- title, image, price, cta
+  variants JSONB, -- {a: "...", b: "..."}
+  metric VARCHAR(50),
+  winner VARCHAR(10), -- a, b, none
+  started_at TIMESTAMP,
+  ended_at TIMESTAMP
+);
+
+-- Customers表 (新增 - LTV系统)
+CREATE TABLE customers (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255),
+  store_id INTEGER REFERENCES stores(id),
+  order_count INTEGER DEFAULT 0,
+  total_revenue DECIMAL DEFAULT 0,
+  first_order_at TIMESTAMP,
+  last_order_at TIMESTAMP,
+  cac DECIMAL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Articles表
 CREATE TABLE articles (
   id SERIAL PRIMARY KEY,
   product_id INTEGER,
@@ -404,145 +426,248 @@ CREATE TABLE articles (
   keyword VARCHAR(255),
   content TEXT,
   word_count INTEGER,
+  cluster_id VARCHAR(100),
   published BOOLEAN,
-  published_at TIMESTAMP
+  published_at TIMESTAMP,
+  traffic INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW()
 );
 
--- analytics表
+-- Analytics表
 CREATE TABLE analytics (
   id SERIAL PRIMARY KEY,
   product_id INTEGER,
+  store_id INTEGER,
+  date DATE,
   traffic INTEGER,
+  sessions INTEGER,
   conversion DECIMAL,
   ctr DECIMAL,
   aov DECIMAL,
   roas DECIMAL,
-  date DATE
+  revenue DECIMAL,
+  spend DECIMAL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Risk Events表 (新增)
+CREATE TABLE risk_events (
+  id SERIAL PRIMARY KEY,
+  store_id INTEGER,
+  event_type VARCHAR(100), -- policy_violation, copyright, account_health
+  severity VARCHAR(50), -- low, medium, high, critical
+  description TEXT,
+  resolved BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT NOW()
 );
 ```
 
 ---
 
-## 十、部署架构
+## 八、数据闭环（LTV系统）
 
-### 10.1 服务器建议
+### 8.1 客户生命周期
 
-| 组件 | 配置 | 数量 |
+```
+┌─────────────┐
+│  首次访问   │
+└──────┬──────┘
+       ↓
+┌─────────────┐
+│  首次购买   │ ← CAC计算
+└──────┬──────┘
+       ↓
+┌─────────────┐
+│  客户运营   │ ← Email/Retargeting
+└──────┬──────┘
+       ↓
+┌─────────────┐
+│  复购      │ ← LTV提升
+└──────┬──────┘
+       ↓
+┌─────────────┐
+│  推荐传播   │
+└─────────────┘
+```
+
+### 8.2 核心指标
+
+| 指标 | 计算 | 目标 |
 |------|------|------|
-| Orchestration | 2核4G | 1 |
-| Worker | 4核8G | 3 |
-| Database | 4核16G | 1 |
-| Storage | 100G | 1 |
-
-### 10.2 Docker部署
-
-```yaml
-services:
-  openclaw:
-    image: openclaw/openclaw
-  
-  trend-service:
-    build: ./services/trend-service
-  
-  product-service:
-    build: ./services/product-service
-  
-  content-service:
-    build: ./services/content-service
-  
-  traffic-service:
-    build: ./services/traffic-service
-  
-  analytics-service:
-    build: ./services/analytics-service
-  
-  redis:
-    image: redis:alpine
-  
-  postgres:
-    image: postgres:15
-```
+| **CAC** | 营销费用 ÷ 新客数 | < $20 |
+| **LTV** | 总收入 ÷ 客户数 | > $80 |
+| **LTV/CAC** | LTV ÷ CAC | > 3 |
+| **复购率** | 复购客户 ÷ 总客户 | > 20% |
 
 ---
 
-## 十一、API集成
+## 九、GMV模型（更现实）
 
-### 11.1 Shopify
+### 9.1 关键参数
 
-```javascript
-// 发布产品
-POST /admin/api/2024-01/products.json
-Headers: X-Shopify-Access-Token: {TOKEN}
-```
+| 参数 | 数值 | 说明 |
+|------|------|------|
+| AOV | $45 | 平均订单金额 |
+| 转化率 | 1.5% | 现实转化率 |
+| 日均访客 | 46,667 | 目标订单÷转化率 |
+| ROAS | 3.0 | 广告投资回报 |
 
-### 11.2 WordPress
+### 9.2 GMV拆解
 
-```javascript
-// 发布文章
-POST /wp-json/wp/v2/posts
-Auth: Basic Auth
-```
-
-### 11.3 OpenAI
-
-```javascript
-// GPT生成
-POST /v1/completions
-Model: gpt-5-mini
-
-// DALL-E图片
-POST /v1/images/generations
-Model: dall-e-3
-```
-
----
-
-## 十二、成功关键
-
-### 核心要素
-
-| 要素 | 说明 |
+| 指标 | 数值 |
 |------|------|
-| **选品** | niche选择决定50%成功率 |
-| **内容** | 规模化内容带来稳定流量 |
-| **流量** | SEO+TikTok组合最有效 |
-| **转化** | 持续优化ROI的关键 |
+| 年GMV | $10,000,000 |
+| 月GMV | $833,333 |
+| 日GMV | $27,778 |
+| 日订单 | 617 |
+| 日访客 | 46,667 |
 
-### 最强组合
+---
+
+## 十、规模化策略
+
+### 10.1 新架构
 
 ```
-SEO (长期) + TikTok (爆发) + Shopify (高利润)
+1 Niche
+  ↓
+1 Brand (品牌)
+  ↓
+3 Stores (店铺) ← 降低单店铺风险
+  ↓
+广告账户分散
+支付渠道分散
+```
+
+### 10.2 扩展路径
+
+| 阶段 | Niches | Brands | Stores | 月GMV |
+|------|--------|--------|--------|--------|
+| Phase 1 | 1 | 1 | 1 | $10K |
+| Phase 2 | 3 | 3 | 5 | $50K |
+| Phase 3 | 10 | 10 | 20 | $300K |
+| Phase 4 | 20 | 20 | 30 | $1M |
+
+---
+
+## 十一、关键缺失模块
+
+### 11.1 Creative Intelligence
+
+```
+功能：
+- 所有广告素材管理
+- CTR/ROAS追踪
+- 自动素材优化
+- 爆款素材库
+```
+
+### 11.2 Store Factory
+
+```
+功能：
+- 自动创建Shopify店铺
+- 域名自动配置
+- 主题自动设置
+- 政策页面自动生成
+- App自动安装
 ```
 
 ---
 
-## 十三、开发路线图
+## 十二、部署架构
 
-### Phase 1：MVP (Week 1-2)
-- [ ] niche_agent 趋势抓取
-- [ ] product_agent 产品生成 + Shopify发布
-- [ ] 基础analytics
+### 12.1 Kubernetes架构
 
-### Phase 2：内容自动化 (Week 3-4)
-- [ ] content_agent SEO文章
-- [ ] WordPress集成
-- [ ] 社媒内容生成
+```
+┌─────────────────────────────────────────┐
+│              Ingress                     │
+└─────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────┐
+│           API Gateway                    │
+└─────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────┐
+│         Control Plane (OpenClaw)        │
+└─────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────┐
+│           Task Queue (Kafka)             │
+└─────────────────────────────────────────┘
+          ↓    ↓    ↓    ↓    ↓
+┌────────┐ ┌──────┐ ┌──────┐ ┌───────┐ ┌────────┐
+│  AI    │ │Video │ │Content│ │ Ads   │ │Analytics│
+│ Worker │ │Worker│ │Worker │ │Worker │ │ Worker │
+└────────┘ └──────┘ └──────┘ └───────┘ └────────┘
+```
 
-### Phase 3：流量自动化 (Week 5-6)
-- [ ] traffic_agent 社媒发布
-- [ ] TikTok视频Pipeline
-- [ ] 广告测试模块
+### 12.2 Worker类型
 
-### Phase 4：优化自动化 (Week 7-8)
-- [ ] analytics_agent 自动优化
-- [ ] A/B测试框架
-- [ ] 规模化复制
+| Worker | 资源 | 功能 |
+|--------|------|------|
+| AI Worker | GPU | GPT/DALL-E调用 |
+| Video Worker | GPU | 视频生成 |
+| Content Worker | CPU | 文章生成 |
+| Ads Worker | CPU | 广告管理 |
+| Analytics Worker | CPU | 数据分析 |
 
 ---
 
-## 十四、附录
+## 十三、终极架构（决策层）
 
-### 14.1 项目结构
+### 13.1 三层架构
+
+```
+┌─────────────────────────────────────────┐
+│          Strategy Layer (AI)             │
+│  - 市场分析                              │
+│  - 选品策略                              │
+│  - 增长策略                              │
+└─────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────┐
+│          Agent Planner                   │
+│  - 任务分解                              │
+│  - 优先级排序                            │
+│  - 资源分配                              │
+└─────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────┐
+│          Execution Layer                 │
+│  - Task Queue                           │
+│  - Worker Cluster                       │
+│  - External APIs                        │
+└─────────────────────────────────────────┘
+```
+
+---
+
+## 十四、评价与改进
+
+### 当前水平
+
+| 维度 | 评分 | 说明 |
+|------|------|------|
+| 架构完整性 | 8/10 | 5层→3层改进 |
+| Agent设计 | 9/10 | 6→9个Agent |
+| 数据闭环 | 7/10 | 增加LTV系统 |
+| 工程深度 | 7/10 | 增加K8s架构 |
+| 风控 | 6/10 | 新增Risk Agent |
+
+### 持续改进方向
+
+- [ ] Creative Intelligence模块
+- [ ] Store Factory模块
+- [ ] Kafka集群部署
+- [ ] Kubernetes配置
+- [ ] LTV系统实现
+
+---
+
+## 附录
+
+### 项目结构
 
 ```
 ecomflow-pro/
@@ -552,41 +677,34 @@ ecomflow-pro/
 │   ├── content-service/
 │   ├── traffic-service/
 │   ├── ads-service/
-│   └── analytics-service/
+│   ├── analytics-service/
+│   ├── store-factory/      # 新增
+│   └── creative-intelligence/ # 新增
 ├── agents/
 │   ├── niche_agent.js
+│   ├── brand_agent.js
 │   ├── product_agent.js
 │   ├── content_agent.js
 │   ├── traffic_agent.js
-│   ├── analytics_agent.js
-│   └── brand_agent.js
+│   ├── ads_agent.js
+│   ├── growth_agent.js     # 新增
+│   ├── cro_agent.js        # 新增
+│   └── risk_agent.js       # 新增
 ├── skills/
-│   ├── shopify_creator.js
-│   ├── seo_writer.js
-│   ├── video_generator.js
-│   └── social_poster.js
 ├── workflows/
 │   └── daily_pipeline.yaml
 ├── database/
 │   └── schema.sql
+├── k8s/                    # 新增
+│   ├── deployment.yaml
+│   ├── service.yaml
+│   └── ingress.yaml
 └── docs/
-    ├── DESIGN_01_ARCHITECTURE.md
-    ├── DESIGN_02_BLUEPRINT.md
-    ├── DESIGN_03_FACTORY.md
-    ├── DESIGN_04_MATRIX.md
-    ├── DESIGN_05_SUPER_FACTORY.md
-    ├── DESIGN_06_ENGINEERING.md
-    └── DESIGN_07_HACKER.md
+    └── SYSTEM_DESIGN.md
 ```
-
-### 14.2 参考文档
-
-- Shopify Admin API: https://shopify.dev/docs/api/admin
-- WordPress REST API: https://developer.wordpress.org/rest-api/
-- OpenAI API: https://platform.openai.com/docs/
 
 ---
 
-**文档版本：** v1.0
+**文档版本：** v2.0
 **最后更新：** 2026-03-10
 **维护：** EcomFlow Pro Team
