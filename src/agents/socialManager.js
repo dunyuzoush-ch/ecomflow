@@ -52,16 +52,30 @@ async function queueTweet(product) {
 // 发推主函数 (带fallback)
 async function postTweet(product) {
   const { postTweet: apiPost } = require('./socialAgent');
+  const { postTweetViaBrowser } = require('./twitterBrowserAgent');
   
+  // 1. 尝试API
   try {
-    // 尝试API
     const result = await apiPost(product);
     if (result) return result;
   } catch (e) {
-    console.log('   ⚠️ API failed, queuing...');
+    console.log('   ⚠️ API failed:', e.message?.substring(0, 50));
   }
   
-  // Fallback: 队列
+  // 2. API失败，尝试浏览器自动化
+  console.log('   🔄 Trying browser posting...');
+  const storeUrl = `https://${process.env.SHOPIFY_STORE}/products/${product.handle}`;
+  const content = makeTweet(product, storeUrl);
+  
+  try {
+    const browserResult = await postTweetViaBrowser(content);
+    if (browserResult) return browserResult;
+  } catch (e) {
+    console.log('   ⚠️ Browser failed:', e.message?.substring(0, 30));
+  }
+  
+  // 3. 都失败，保存到队列
+  console.log('   📝 Queuing tweet...');
   return await queueTweet(product);
 }
 
