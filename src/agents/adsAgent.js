@@ -10,10 +10,36 @@
  */
 
 const axios = require("axios");
+const fs = require("fs");
+const path = require("path");
 
 // API配置
 const META_GRAPH_VERSION = 'v18.0';
 const META_BASE_URL = `https://graph.facebook.com/${META_GRAPH_VERSION}`;
+const TOKEN_FILE = path.join(__dirname, '../../.meta_token');
+
+/**
+ * 获取Token - 支持从文件读取
+ */
+function getAccessToken() {
+  // 优先从环境变量
+  if (process.env.META_ACCESS_TOKEN) {
+    return process.env.META_ACCESS_TOKEN;
+  }
+  // 从文件读取
+  if (fs.existsSync(TOKEN_FILE)) {
+    return fs.readFileSync(TOKEN_FILE, 'utf8').trim();
+  }
+  return null;
+}
+
+/**
+ * 保存Token
+ */
+function saveAccessToken(token) {
+  fs.writeFileSync(TOKEN_FILE, token);
+  console.log('💾 Token saved to', TOKEN_FILE);
+}
 
 /**
  * 广告配置
@@ -219,10 +245,11 @@ class MetaAdsClient {
  * 获取 Meta Ads 客户端实例
  */
 function getMetaAdsClient() {
-  const accessToken = process.env.META_ACCESS_TOKEN;
+  const accessToken = getAccessToken();
   const adAccountId = process.env.META_AD_ACCOUNT_ID;
   
   if (!accessToken || !adAccountId) {
+    console.log('⚠️ Meta Ads: Token或Account ID未配置');
     return null;
   }
   
@@ -265,6 +292,18 @@ function generateTargeting(product, options = {}) {
 }
 
 /**
+ * 检查Token是否过期
+ */
+function isTokenExpired(error) {
+  if (!error.response) return false;
+  const data = error.response.data;
+  if (data?.error?.code === 190 || data?.error?.error_subcode === 463) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * 启动Meta广告 - 完整流程
  */
 async function launchMetaAd(product, options = {}) {
@@ -272,7 +311,7 @@ async function launchMetaAd(product, options = {}) {
   
   if (!client) {
     console.log('📊 Meta Ads: Not configured (simulated)');
-    console.log('   需要配置: META_ACCESS_TOKEN, META_AD_ACCOUNT_ID');
+    console.log('   需要配置: 运行 node scripts/refresh_meta_token.js save <token>');
     return { status: 'not_configured', platform: 'meta', product: product.title };
   }
 
@@ -341,8 +380,18 @@ async function launchMetaAd(product, options = {}) {
     };
 
   } catch (error) {
-    console.error(`📊 Meta: Failed to launch ad for ${product.title}`, error.message);
-    return { status: 'error', platform: 'meta', product: product.title, error: error.message };
+    const errorMsg = error.response?.data?.error?.message || error.message;
+    console.error(`📊 Meta: Failed to launch ad for ${product.title}`, errorMsg);
+    
+    // 检查token是否过期
+    if (isTokenExpired(error)) {
+      console.log('⚠️ Token已过期! 请刷新:');
+      console.log('   1. 打开 https://developers.facebook.com/tools/explorer/');
+      console.log('   2. 获取新token');
+      console.log('   3. 运行: node scripts/refresh_meta_token.js save <token>');
+    }
+    
+    return { status: 'error', platform: 'meta', product: product.title, error: errorMsg };
   }
 }
 
