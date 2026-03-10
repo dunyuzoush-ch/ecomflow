@@ -21,9 +21,9 @@ const META_BASE_URL = `https://graph.facebook.com/${META_GRAPH_VERSION}`;
 const AD_CONFIG = {
   meta: {
     budget: 10, // $10/day per ad
-    objective: 'OUTCOME_SALES',
+    objective: 'OUTCOME_TRAFFIC',
     status: 'PAUSED', // 默认暂停，上线后启用
-    optimization_goal: 'OFFSITE_CONVERSIONS',
+    optimization_goal: 'LINK_CLICKS',
     billing_event: 'IMPRESSIONS',
     bid_strategy: 'LOWEST_COST_WITHOUT_CAP'
   },
@@ -106,7 +106,7 @@ class MetaAdsClient {
   }
 
   /**
-   * 创建广告组 (Ad Set) - 不设置预算，使用系列预算
+   * 创建广告组 (Ad Set) - 需要设置billing和bid和targeting
    */
   async createAdSet(config) {
     const {
@@ -116,12 +116,25 @@ class MetaAdsClient {
       optimizationGoal = 'OFFSITE_CONVERSIONS'
     } = config;
 
+    // 确保有基本的targeting - 使用正确的API格式
+    const finalTargeting = {
+      age_min: 25,
+      age_max: 55,
+      geo_locations: {
+        countries: ['US'],
+        location_types: ['home', 'recent']
+      }
+    };
+
     const data = {
       name,
       campaign_id: campaignId,
       status: 'PAUSED',
       optimization_goal: optimizationGoal,
-      targeting: JSON.stringify(targeting)
+      billing_event: 'IMPRESSIONS',
+      bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
+      bid_amount: 100,
+      targeting: JSON.stringify(finalTargeting)
     };
 
     return this.request(`act_${this.adAccountId}/adsets`, 'POST', data);
