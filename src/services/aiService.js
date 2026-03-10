@@ -10,18 +10,22 @@ const axios = require("axios");
  */
 async function generateProduct(keyword) {
   // 如果没有API Key，使用模拟数据
-  if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.startsWith('sk-xxxx')) {
-    console.log('   (Using mock data - no Openai key)');
+  if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'sk-xxxx') {
+    console.log('   (Using mock data - no OpenAI key)');
     return generateMockProduct(keyword);
   }
 
-  // 使用OpenAI DALL-E生成图片
-  const imageUrl = await generateProductImage(keyword);
-  
-  const product = await generateProductData(keyword);
-  product.imageUrl = imageUrl;
-  
-  return product;
+  // 使用OpenAI生成
+  console.log('   (Using OpenAI...)');
+  try {
+    const product = await generateProductData(keyword);
+    const imageUrl = await generateProductImage(keyword);
+    product.imageUrl = imageUrl;
+    return product;
+  } catch (error) {
+    console.log('   (OpenAI failed:', error.message.substring(0,30), ')');
+    return generateMockProduct(keyword);
+  }
 }
 
 /**
@@ -66,8 +70,8 @@ Return JSON:
  */
 async function generateProductImage(keyword) {
   if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.startsWith('sk-xxxx')) {
-    // 返回免费placeholder图片
-    return getPlaceholderImage(keyword);
+    // 返回默认图片
+    return 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1024';
   }
 
   const prompt = `High quality product photo of ${keyword}, white background, professional ecommerce photography, clean and modern`;
@@ -87,7 +91,7 @@ async function generateProductImage(keyword) {
     return response.data.data[0].url;
   } catch (error) {
     console.log('   (Image gen failed, using placeholder)');
-    return getPlaceholderImage(keyword);
+    return IMAGE_MAP.default || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1024';
   }
 }
 

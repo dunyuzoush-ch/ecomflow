@@ -3,6 +3,8 @@
  * 生成并发布产品
  */
 
+require('dotenv').config();
+
 const { generateProduct } = require("../services/aiService");
 const { publishProduct } = require("../services/shopifyService");
 
