@@ -123,7 +123,8 @@ class MetaAdsClient {
       geo_locations: {
         countries: ['US'],
         location_types: ['home', 'recent']
-      }
+      },
+      targeting_automation: { advantage_audience: 0 }
     };
 
     const data = {

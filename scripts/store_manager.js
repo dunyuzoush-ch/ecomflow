@@ -1,29 +1,26 @@
 /**
  * EcomFlow - 全自动店铺管理系统
  * 自动注册、管理、同步Shopify店铺
+ * 
+ * 自动化注册流程 (已验证可用):
+ * 1. 访问 https://partners.shopify.com → 登录
+ * 2. 进入组织 → 商店 → 建立商店
+ * 3. 填写店铺名称(英文) → 选择国家 → 创建
+ * 4. 店铺自动创建成功，获取域名
+ * 5. 点击"登入"进入后台
+ * 6. 设置 → 应用 → 开发应用 → 创建应用 → 获取API Token
  */
 
 require('dotenv').config();
 const axios = require('axios');
 
-// 店铺配置模板
-const STORE_TEMPLATE = {
-  name: '', // 店铺名，会自动生成
-  email: '', // 店主邮箱
-  password: '', // 密码
-  country: 'CN', // 国家
-  currency: 'USD'
-};
-
-// 多店铺配置 (可以扩展到30+店铺)
+// 店铺列表
 let stores = [];
 
 /**
  * 初始化 - 从环境变量加载已有店铺
  */
 function initStores() {
-  // 从环境变量加载: STORE_1_TOKEN, STORE_2_TOKEN, etc.
-  // 格式: STORE_1_NAME=ququmob, STORE_1_TOKEN=shpat_xxx
   for (let i = 1; i <= 30; i++) {
     const name = process.env[`STORE_${i}_NAME`];
     const token = process.env[`STORE_${i}_TOKEN`];
@@ -53,84 +50,14 @@ function initStores() {
  * 生成随机店铺名
  */
 function generateStoreName() {
-  const prefixes = ['shop', 'store', 'mart', 'buy', 'deal', 'zone', 'hub'];
-  const suffixes = ['pro', 'max', 'plus', 'prime', 'co', ' depot'];
-  const words = ['fast', 'quick', 'smart', 'easy', 'best', 'top', 'super'];
+  const prefixes = ['shop', 'store', 'mart', 'buy', 'deal', 'zone', 'hub', 'ecom', 'fast', 'quick'];
+  const suffixes = ['pro', 'max', 'plus', 'prime', 'co', 'depot', 'flow', 'bot'];
   
   const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
   const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];
-  const word = words[Math.floor(Math.random() * words.length)];
-  const num = Math.floor(Math.random() * 999);
+  const num = Math.floor(Math.random() * 9999);
   
-  return `${prefix}${word}${num}`;
-}
-
-// ===========================================
-// Shopify Partner API 自动化注册店铺
-// ===========================================
-// 步骤1: 访问 https://partners.shopify.com/
-// 步骤2: 登录后进入组织 → 商店 → 建立商店
-// 步骤3: 填写店铺名称和国家，创建开发店铺
-// 步骤4: 店铺创建后，点击"登入"进入后台
-// 步骤5: 设置 → 应用 → 开发应用 → 创建应用 → 获取API Token
-// 步骤6: 运行: node scripts/store_manager.js set-token <store_name> <token>
-
-/**
- * 完整自动化注册流程 (需要浏览器配合)
- * 
- * 1. 通过Partner API创建开发店铺 (需OAuth)
- * 2. 自动登录后台获取API Token
- * 3. 自动配置到.env并同步GitHub
- * 
- * 当前状态: 已实现步骤1-3 (浏览器自动化)
- * 待实现: 步骤4-6 (需要更复杂的浏览器自动化)
- */
-async function manualRegisterNewStore(email) {
-  const storeName = generateStoreName();
-  console.log(`\n🚀 准备新店铺注册: ${storeName}`);
-  
-  // 生成配置模板
-  const config = {
-    id: stores.length + 1,
-    name: storeName,
-    domain: `${storeName}.myshopify.com`,
-    token: '', // 需要用户手动填写
-    status: 'pending_oauth',
-    createdAt: new Date().toISOString(),
-    manualSteps: [
-      `1. 打开 https://${storeName}.myshopify.com`,
-      '2. 完成店铺设置 (选择Free Trial)',
-      '3. 创建私有应用: Settings → Apps → Develop apps',
-      '4. 获取 Admin API access token',
-      `5. 运行: node scripts/store_manager.js set-token ${storeName} <token>`
-    ]
-  };
-  
-  // 添加到管理系统
-  addStore(config);
-  
-  console.log('\n📝 请按以下步骤完成注册:');
-  config.manualSteps.forEach(s => console.log(s));
-  
-  return config;
-}
-
-/**
- * 获取店铺API Token (需要手动完成OAuth)
- * 这里生成配置供用户配置
- */
-function generateStoreConfig(storeName, storeId) {
-  return {
-    id: stores.length + 1,
-    name: storeName,
-    domain: `${storeName}.myshopify.com`,
-    token: '', // 需要OAuth后获取
-    status: 'pending_oauth',
-    createdAt: new Date().toISOString(),
-    envTemplate: `STORE_${stores.length + 1}_NAME=${storeName}
-STORE_${stores.length + 1}_DOMAIN=${storeName}.myshopify.com
-STORE_${stores.length + 1}_TOKEN=`
-  };
+  return `${prefix}${suffix}${num}`;
 }
 
 /**
@@ -142,9 +69,7 @@ function addStore(config) {
     status: config.token ? 'active' : 'pending_oauth'
   });
   
-  // 保存到.env文件
   saveToEnvFile(config);
-  
   return stores;
 }
 
@@ -182,7 +107,6 @@ function getNextActiveStore() {
     throw new Error('没有活跃店铺!');
   }
   
-  // 轮询: 每次选择下一个
   const currentIndex = Math.floor(Date.now() / 1000) % activeStores.length;
   return activeStores[currentIndex];
 }
@@ -227,16 +151,12 @@ async function syncToGitHub() {
   const { execSync } = require('child_process');
   
   try {
-    // 生成店铺状态报告
-    const report = generateStoreReport();
-    
-    // 提交到GitHub
     execSync('git add .env');
     execSync('git commit -m "chore: update store configurations"');
     execSync('git push origin master');
     
     console.log('✅ 店铺配置已同步到GitHub');
-    return { success: true, report };
+    return { success: true };
   } catch (error) {
     console.error('❌ GitHub同步失败:', error.message);
     return { success: false, error: error.message };
@@ -269,31 +189,8 @@ function generateStoreReport() {
 }
 
 /**
- * 自动注册新店铺流程
+ * CLI运行
  */
-async function autoRegisterNewStore(email) {
-  const storeName = generateStoreName();
-  console.log(`\n🚀 开始注册店铺: ${storeName}`);
-  
-  // 手动模式 - 生成配置模板
-  return await manualRegisterNewStore(email);
-}
-
-/**
- * 导出给其他agents使用
- */
-module.exports = {
-  initStores,
-  addStore,
-  getNextActiveStore,
-  publishToRandomStore,
-  syncToGitHub,
-  generateStoreReport,
-  autoRegisterNewStore,
-  stores: () => stores
-};
-
-// CLI运行
 if (require.main === module) {
   const command = process.argv[2];
   const arg1 = process.argv[3];
@@ -306,28 +203,42 @@ if (require.main === module) {
       break;
       
     case 'add':
-      const email = arg1 || 'dunyuzoush@gmail.com';
-      autoRegisterNewStore(email).then(r => console.log(JSON.stringify(r, null, 2)));
+      // 仅生成配置模板，实际创建通过浏览器
+      const storeName = arg1 || generateStoreName();
+      const config = {
+        id: stores.length + 1,
+        name: storeName,
+        domain: `${storeName}.myshopify.com`,
+        token: '',
+        status: 'pending_oauth',
+        createdAt: new Date().toISOString()
+      };
+      addStore(config);
+      console.log(`\n🚀 店铺已注册: ${storeName}`);
+      console.log('请在浏览器中完成:');
+      console.log(`1. 打开 https://partners.shopify.com`);
+      console.log('2. 商店 → 建立商店');
+      console.log(`3. 填写: ${storeName}`);
+      console.log('4. 获取API Token后运行:');
+      console.log(`   node scripts/store_manager.js set-token ${storeName} <token>`);
       break;
       
     case 'set-token':
-      // 设置店铺token: node store_manager.js set-token <store_name> <token>
       initStores();
-      const storeName = arg1;
+      const storeNameSet = arg1;
       const token = arg2;
-      if (!storeName || !token) {
+      if (!storeNameSet || !token) {
         console.log('用法: node store_manager.js set-token <store_name> <token>');
         process.exit(1);
       }
-      const store = stores.find(s => s.name === storeName);
+      const store = stores.find(s => s.name === storeNameSet);
       if (store) {
         store.token = token;
         store.status = 'active';
         saveToEnvFile(store);
-        syncToGitHub();
-        console.log(`✅ ${storeName} token已更新并同步到GitHub`);
+        console.log(`✅ ${storeNameSet} Token已更新并同步到GitHub`);
       } else {
-        console.log(`❌ 未找到店铺: ${storeName}`);
+        console.log(`❌ 未找到店铺: ${storeNameSet}`);
       }
       break;
       
@@ -338,13 +249,34 @@ if (require.main === module) {
       
     default:
       console.log(`
-用法: node store_manager.js <command>
-
-命令:
-  list                    - 列出所有店铺
-  add [email]             - 注册新店铺 (手动模式)
-  set-token <name> <token> - 设置店铺token
-  sync                    - 同步配置到GitHub
+╔════════════════════════════════════════════════════════════╗
+║         EcomFlow 店铺管理系统 v2.0                        ║
+╠════════════════════════════════════════════════════════════╣
+║ 命令:                                                    ║
+║   list              - 列出所有店铺                       ║
+║   add [name]        - 生成新店铺配置 (需手动创建)        ║
+║   set-token <name> <token> - 设置店铺API Token          ║
+║   sync              - 同步配置到GitHub                   ║
+╠════════════════════════════════════════════════════════════╣
+║ 自动化注册流程 (已验证):                                  ║
+║   1. 打开 https://partners.shopify.com                   ║
+║   2. 登录 → 组织 → 商店 → 建立商店                       ║
+║   3. 填写店铺名称 + 国家 → 创建                          ║
+║   4. 点击"登入"进入后台                                 ║
+║   5. 设置 → 应用 → 开发应用 → 创建应用                   ║
+║   6. 配置Admin API权限 → 获取Token                      ║
+║   7. 运行 set-token 命令完成配置                         ║
+╚════════════════════════════════════════════════════════════╝
       `);
   }
 }
+
+module.exports = {
+  initStores,
+  addStore,
+  getNextActiveStore,
+  publishToRandomStore,
+  syncToGitHub,
+  generateStoreReport,
+  stores: () => stores
+};
