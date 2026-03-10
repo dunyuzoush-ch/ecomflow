@@ -7,7 +7,7 @@ require("dotenv").config();
 
 const { getTrends } = require("../agents/trendAgent");
 const { createProduct } = require("../agents/productAgent");
-const { postTweet } = require("../agents/socialAgent");
+const { postTweet } = require("../agents/socialManager");
 const { generateAndPublishSEO } = require("../agents/seoAgent");
 const { launchTestAds, optimizeAds } = require("../agents/adsAgent");
 const { generateReport, autoOptimize, detectWinningProducts } = require("../agents/analyticsAgent");

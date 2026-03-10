@@ -20,22 +20,24 @@ EcomFlow Pro 是一款**全自动化AI电商运营系统**，帮助你：
 
 ---
 
-## ⚡ 5分钟快速开始
+## 🚀 一键部署
 
+### Windows
 ```bash
-# 1. 克隆项目
-git clone https://github.com/dunyuzoush-ch/ecomflow.git
-cd ecomflow
-
-# 2. 配置环境
-cp .env.example .env
-# 编辑 .env 填写你的 Shopify Token
-
-# 3. 一键启动
-docker-compose up -d
+deploy.bat
 ```
 
-访问 http://localhost:3000 开始使用！
+### Linux/VPS
+```bash
+chmod +x deploy.sh
+./deploy.sh
+```
+
+### 远程VPS部署
+```bash
+chmod +x deploy-vps.sh
+./deploy-vps.sh
+```
 
 ---
 

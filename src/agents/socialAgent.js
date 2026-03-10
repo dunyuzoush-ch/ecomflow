@@ -1,9 +1,12 @@
 /**
  * EcomFlow MVP - Social Agent
- * 发布社媒推广 - 使用 twitter-api-v2
+ * 发布社媒推广 - 使用 twitter-api-v2 + browser fallback
  */
 
 const { TwitterApi } = require("twitter-api-v2");
+
+// Browser-based poster (fallback)
+const { postTweetViaBrowser, makeTweet } = require("./twitterBrowserAgent");
 
 /**
  * 初始化Twitter客户端 - OAuth 1.0a User Context
@@ -16,6 +19,11 @@ const getTwitterClient = () => {
     accessSecret: process.env.TWITTER_ACCESS_SECRET
   });
 };
+
+// 生成推文内容
+function generateTweet(product, url) {
+  return makeTweet(product, url);
+}
 
 /**
  * 社媒Agent：发布推广内容
@@ -38,9 +46,10 @@ async function postTweet(product) {
     console.log(`🐦 Tweet posted: ${tweet.id || tweet.data?.id}`);
     return tweet;
   } catch (error) {
-    console.error('   ❌ Twitter Error:', error.message);
+    console.error('   ❌ Twitter API Error:', error.message);
     if (error.code === 403) {
-      console.log('   ⚠️ Twitter API权限不足，可能是App没有Write权限');
+      console.log('   🔄 Trying browser-based posting...');
+      return await postTweetViaBrowser(tweetContent);
     }
     return null;
   }

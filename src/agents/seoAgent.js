@@ -12,6 +12,7 @@ function generateSEOArticle(keyword, products = []) {
   const templates = [
     {
       title: `The Ultimate ${keyword} Buying Guide for 2026`,
+      keyword: keyword,
       content: `
 <h2>Introduction</h2>
 <p>Welcome to our comprehensive ${keyword} buying guide. Whether you're a beginner or expert, we've got you covered.</p>
@@ -35,10 +36,11 @@ ${products.map(p => `<li><a href="${p.link}">${p.title}</a> - $${p.price}</li>`)
     },
     {
       title: `Best ${keyword} - Expert Reviews & Top Picks`,
+      keyword: keyword,
       content: `
 <h2>Our Top ${keyword} Picks</h2>
 <p>After extensive testing, here are our top recommendations:</p>
-${products.map(p => `<h3>${p.title}</h3><p>${p.description}</p>`).join('')}
+${products.map(p => `<h3>${p.title}</h3><p>${p.description || 'Great product at an amazing price!'}</p>`).join('')}
       `
     }
   ];
@@ -47,7 +49,7 @@ ${products.map(p => `<h3>${p.title}</h3><p>${p.description}</p>`).join('')}
 }
 
 /**
- * 发布到WordPress
+ * 发布到WordPress - 使用XML-RPC API
  */
 async function publishToWordPress(article) {
   if (!process.env.WP_URL || !process.env.WP_USER) {
@@ -56,27 +58,45 @@ async function publishToWordPress(article) {
   }
   
   try {
-    const response = await axios.post(
-      `${process.env.WP_URL}/wp-json/wp/v2/posts`,
-      {
-        title: article.title,
-        content: article.content,
-        status: 'publish',
-        categories: [1],
-        tags: article.keyword.split(' ')
-      },
-      {
-        auth: {
-          username: process.env.WP_USER,
-          password: process.env.WP_PASS
-        }
+    // 使用 xmlrpc-js 库
+    const xmlrpc = require('xmlrpc');
+    
+    // 创建XML-RPC客户端
+    const wpUrl = process.env.WP_URL.replace('http://', '').replace('https://', '');
+    const client = xmlrpc.createClient({
+      host: wpUrl.split(':')[0],
+      port: wpUrl.includes(':') ? parseInt(wpUrl.split(':')[1]) : 80,
+      path: '/xmlrpc.php'
+    });
+    
+    // 发布文章
+    const post = {
+      post_type: 'post',
+      post_status: 'publish',
+      post_title: article.title,
+      post_content: article.content,
+      post_author: 1,
+      terms: {
+        category: [1]
       }
-    );
-    console.log(`✅ Published SEO article: ${article.title}`);
-    return { status: 'published', url: response.data.link };
+    };
+    
+    return new Promise((resolve, reject) => {
+      client.methodCall('wp.newPost', [0, process.env.WP_USER, process.env.WP_PASS, post], (err, response) => {
+        if (err) {
+          console.log('❌ WordPress XML-RPC error:', err.message);
+          resolve({ status: 'failed', error: err.message });
+        } else {
+          const postUrl = `${process.env.WP_URL}/?p=${response}`;
+          console.log(`✅ Published SEO article: ${article.title}`);
+          console.log(`   URL: ${postUrl}`);
+          resolve({ status: 'published', url: postUrl });
+        }
+      });
+    });
   } catch (error) {
     console.log('❌ WordPress error:', error.message);
-    return { status: 'failed' };
+    return { status: 'failed', error: error.message };
   }
 }
 

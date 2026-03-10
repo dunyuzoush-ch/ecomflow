@@ -5,7 +5,7 @@
 
 const { getTrends } = require("../agents/trendAgent");
 const { createProduct } = require("../agents/productAgent");
-const { postTweet } = require("../agents/socialAgent");
+const { postTweet } = require("../agents/socialManager");
 
 /**
  * 每日任务主函数
