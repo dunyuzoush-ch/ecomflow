@@ -65,9 +65,25 @@ function generateStoreName() {
   return `${prefix}${word}${num}`;
 }
 
+// ===========================================
+// Shopify Partner API 自动化注册店铺
+// ===========================================
+// 步骤1: 访问 https://partners.shopify.com/
+// 步骤2: 登录后进入组织 → 商店 → 建立商店
+// 步骤3: 填写店铺名称和国家，创建开发店铺
+// 步骤4: 店铺创建后，点击"登入"进入后台
+// 步骤5: 设置 → 应用 → 开发应用 → 创建应用 → 获取API Token
+// 步骤6: 运行: node scripts/store_manager.js set-token <store_name> <token>
+
 /**
- * 手动/半自动注册 - 生成配置模板
- * 用户需要去 Shopify 注册新店铺，然后填入token
+ * 完整自动化注册流程 (需要浏览器配合)
+ * 
+ * 1. 通过Partner API创建开发店铺 (需OAuth)
+ * 2. 自动登录后台获取API Token
+ * 3. 自动配置到.env并同步GitHub
+ * 
+ * 当前状态: 已实现步骤1-3 (浏览器自动化)
+ * 待实现: 步骤4-6 (需要更复杂的浏览器自动化)
  */
 async function manualRegisterNewStore(email) {
   const storeName = generateStoreName();

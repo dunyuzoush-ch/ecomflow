@@ -21,7 +21,7 @@ const META_BASE_URL = `https://graph.facebook.com/${META_GRAPH_VERSION}`;
 const AD_CONFIG = {
   meta: {
     budget: 10, // $10/day per ad
-    objective: 'CONVERSIONS',
+    objective: 'OUTCOME_SALES',
     status: 'PAUSED', // 默认暂停，上线后启用
     optimization_goal: 'OFFSITE_CONVERSIONS',
     billing_event: 'IMPRESSIONS',
@@ -81,16 +81,17 @@ class MetaAdsClient {
   }
 
   /**
-   * 创建广告系列
+   * 创建广告系列 - 使用系列预算
    */
   async createCampaign(config) {
-    const { name, objective = 'CONVERSIONS', status = 'PAUSED', dailyBudget } = config;
+    const { name, objective = 'OUTCOME_SALES', status = 'PAUSED', dailyBudget = 10 } = config;
     
     const data = {
       name,
       objective,
       status,
-      ...(dailyBudget && { daily_budget: dailyBudget * 100 })
+      special_ad_categories: [],
+      daily_budget: dailyBudget * 100
     };
     
     return this.request(`act_${this.adAccountId}/campaigns`, 'POST', data);
@@ -105,27 +106,21 @@ class MetaAdsClient {
   }
 
   /**
-   * 创建广告组 (Ad Set)
+   * 创建广告组 (Ad Set) - 不设置预算，使用系列预算
    */
   async createAdSet(config) {
     const {
       campaignId,
       name,
-      dailyBudget,
       targeting = {},
-      optimizationGoal = 'OFFSITE_CONVERSIONS',
-      billingEvent = 'IMPRESSIONS',
-      bidStrategy = 'LOWEST_COST_WITHOUT_CAP'
+      optimizationGoal = 'OFFSITE_CONVERSIONS'
     } = config;
 
     const data = {
       name,
       campaign_id: campaignId,
       status: 'PAUSED',
-      daily_budget: dailyBudget * 100,
       optimization_goal: optimizationGoal,
-      billing_event: billingEvent,
-      bid_strategy: bidStrategy,
       targeting: JSON.stringify(targeting)
     };
 
@@ -237,33 +232,21 @@ function generateAdCreative(product, options = {}) {
 }
 
 /**
- * 生成受众定位
+ * 生成受众定位 - 简化版
  */
 function generateTargeting(product, options = {}) {
   const { 
-    interests = [], 
     ageMin = 25, 
     ageMax = 55,
-    locations = ['US', 'CA', 'UK', 'AU']
+    locations = ['US']
   } = options;
-
-  // 基于产品的自动定位
-  const productInterests = [
-    { id: '6004384067451', name: 'Online Shopping' },
-    { id: '6004385084275', name: 'Fashion' },
-    { id: '6004381048073', name: 'E-commerce' }
-  ];
-
-  // 合并产品相关兴趣和自定义兴趣
-  const allInterests = [...productInterests, ...interests.map(i => ({ name: i }))];
 
   return {
     age_min: ageMin,
     age_max: ageMax,
     geo_locations: {
       countries: locations
-    },
-    interests: allInterests
+    }
   };
 }
 
