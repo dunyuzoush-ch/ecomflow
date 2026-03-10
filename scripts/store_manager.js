@@ -66,38 +66,37 @@ function generateStoreName() {
 }
 
 /**
- * 创建新店铺 (通过Shopify Partner API)
- * 注意: 需要Shopify Partner账号
+ * 手动/半自动注册 - 生成配置模板
+ * 用户需要去 Shopify 注册新店铺，然后填入token
  */
-async function createStoreViaPartnerAPI(email, storeName) {
-  try {
-    // Shopify Partner API 创建开发店铺
-    const response = await axios.post(
-      'https://partners.shopify.com/api/internal/stores',
-      {
-        store: {
-          domain: `${storeName}.myshopify.com`,
-          email: email,
-          plan: 'affiliate' // 免费开发店铺
-        }
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${process.env.SHOPIFY_PARTNER_TOKEN}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-    
-    return {
-      success: true,
-      domain: response.data.store.domain,
-      storeId: response.data.store.id
-    };
-  } catch (error) {
-    console.error('❌ 创建店铺失败:', error.message);
-    return { success: false, error: error.message };
-  }
+async function manualRegisterNewStore(email) {
+  const storeName = generateStoreName();
+  console.log(`\n🚀 准备新店铺注册: ${storeName}`);
+  
+  // 生成配置模板
+  const config = {
+    id: stores.length + 1,
+    name: storeName,
+    domain: `${storeName}.myshopify.com`,
+    token: '', // 需要用户手动填写
+    status: 'pending_oauth',
+    createdAt: new Date().toISOString(),
+    manualSteps: [
+      `1. 打开 https://${storeName}.myshopify.com`,
+      '2. 完成店铺设置 (选择Free Trial)',
+      '3. 创建私有应用: Settings → Apps → Develop apps',
+      '4. 获取 Admin API access token',
+      `5. 运行: node scripts/store_manager.js set-token ${storeName} <token>`
+    ]
+  };
+  
+  // 添加到管理系统
+  addStore(config);
+  
+  console.log('\n📝 请按以下步骤完成注册:');
+  config.manualSteps.forEach(s => console.log(s));
+  
+  return config;
 }
 
 /**
@@ -258,34 +257,10 @@ function generateStoreReport() {
  */
 async function autoRegisterNewStore(email) {
   const storeName = generateStoreName();
-  console.log(`\n🚀 开始自动注册店铺: ${storeName}`);
+  console.log(`\n🚀 开始注册店铺: ${storeName}`);
   
-  // 步骤1: 通过Partner API创建
-  const result = await createStoreViaPartnerAPI(email, storeName);
-  
-  if (result.success) {
-    // 步骤2: 生成配置
-    const config = generateStoreConfig(storeName, result.storeId);
-    
-    // 步骤3: 添加到管理系统
-    addStore(config);
-    
-    // 步骤4: 同步到GitHub
-    await syncToGitHub();
-    
-    return {
-      success: true,
-      store: config,
-      nextSteps: [
-        `1. 打开 ${config.domain}`,
-        '2. 完成店铺设置向导',
-        '3. 创建私有应用获取API Token',
-        '4. 更新 .env 中的 TOKEN'
-      ]
-    };
-  }
-  
-  return result;
+  // 手动模式 - 生成配置模板
+  return await manualRegisterNewStore(email);
 }
 
 /**
@@ -305,6 +280,8 @@ module.exports = {
 // CLI运行
 if (require.main === module) {
   const command = process.argv[2];
+  const arg1 = process.argv[3];
+  const arg2 = process.argv[4];
   
   switch (command) {
     case 'list':
@@ -313,8 +290,29 @@ if (require.main === module) {
       break;
       
     case 'add':
-      const email = process.argv[3] || 'dunyuzoush@gmail.com';
-      autoRegisterNewStore(email).then(r => console.log(r));
+      const email = arg1 || 'dunyuzoush@gmail.com';
+      autoRegisterNewStore(email).then(r => console.log(JSON.stringify(r, null, 2)));
+      break;
+      
+    case 'set-token':
+      // 设置店铺token: node store_manager.js set-token <store_name> <token>
+      initStores();
+      const storeName = arg1;
+      const token = arg2;
+      if (!storeName || !token) {
+        console.log('用法: node store_manager.js set-token <store_name> <token>');
+        process.exit(1);
+      }
+      const store = stores.find(s => s.name === storeName);
+      if (store) {
+        store.token = token;
+        store.status = 'active';
+        saveToEnvFile(store);
+        syncToGitHub();
+        console.log(`✅ ${storeName} token已更新并同步到GitHub`);
+      } else {
+        console.log(`❌ 未找到店铺: ${storeName}`);
+      }
       break;
       
     case 'sync':
@@ -327,9 +325,10 @@ if (require.main === module) {
 用法: node store_manager.js <command>
 
 命令:
-  list          - 列出所有店铺
-  add [email]   - 自动注册新店铺
-  sync          - 同步配置到GitHub
+  list                    - 列出所有店铺
+  add [email]             - 注册新店铺 (手动模式)
+  set-token <name> <token> - 设置店铺token
+  sync                    - 同步配置到GitHub
       `);
   }
 }

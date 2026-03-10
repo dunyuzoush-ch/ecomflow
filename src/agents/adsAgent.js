@@ -69,7 +69,7 @@ class MetaAdsClient {
    * 获取广告账户信息
    */
   async getAccountInfo() {
-    return this.request(`act_${this.adAccountId}?fields=id,name,account_status,currency,timezone_name`);
+    return this.request(`act_${this.adAccountId}?fields=id,name,account_status,currency,timezone_name`.replace('act_${this.adAccountId}', `act_${this.adAccountId}`));
   }
 
   /**
@@ -90,10 +90,10 @@ class MetaAdsClient {
       name,
       objective,
       status,
-      ...(dailyBudget && { daily_budget: dailyBudget * 100 }) // 转换为分
+      ...(dailyBudget && { daily_budget: dailyBudget * 100 })
     };
     
-    return this.request('act_${this.adAccountId}/campaigns', 'POST', data);
+    return this.request(`act_${this.adAccountId}/campaigns`, 'POST', data);
   }
 
   /**
@@ -157,7 +157,7 @@ class MetaAdsClient {
               type: creative.cta || 'SHOP_NOW',
               value: { link: creative.url }
             },
-            image_hash: creative.imageHash // 需要先上传图片获取hash
+            image_hash: creative.imageHash
           }
         }
       })
