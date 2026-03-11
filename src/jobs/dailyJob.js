@@ -1,40 +1,86 @@
 /**
  * EcomFlow MVP - Daily Job
- * 每日自动化任务
+ * 每日自动化任务 - 使用新服务
  */
 
-const { getTrends } = require("../agents/trendAgent");
-const { createProduct } = require("../agents/productAgent");
-const { postTweet } = require("../agents/socialManager");
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
+
+const { discoverTrends } = require("../../services/trend-service");
+const { generateProductFromTrend } = require("../../services/product-service");
+const { publishProduct, STORES, loadProductCache, removeDuplicates } = require("../services/shopifyService");
+const { generateSEOArticle } = require("../../services/content-service");
+const { generateTwitterContent } = require("../../services/traffic-service");
 
 /**
  * 每日任务主函数
  */
 async function runDaily() {
-  console.log("\n🚀 ========== Starting Daily Pipeline ==========\n");
+  console.log(`
+╔═══════════════════════════════════════╗
+║     EcomFlow Pro MVP - Starting...    ║
+║     ${new Date().toLocaleDateString()}                    ║
+╚═══════════════════════════════════════╝
+  `);
 
   const startTime = Date.now();
 
   try {
-    // 1. 获取趋势关键词
-    console.log("📊 Step 1: Getting trends...");
-    const trends = await getTrends();
-    console.log(`   Found ${trends.length} trends`);
+    // Step 1: 趋势发现
+    console.log("\n📊 Step 1: Discovering trends...");
+    const trends = await discoverTrends();
+    console.log(`   Found ${trends.length} trending products`);
 
-    // 2. 为每个趋势创建产品
-    for (const keyword of trends) {
+    // Step 2: 加载产品缓存
+    console.log("\n📋 Step 2: Loading product caches...");
+    for (const store of STORES) {
+      await loadProductCache(store);
+    }
+
+    // Step 3: 生成并发布产品
+    console.log("\n📦 Step 3: Creating products...");
+    let published = 0;
+    let skipped = 0;
+
+    for (const trend of trends.slice(0, 10)) {
       try {
-        // 生成并发布产品
-        const product = await createProduct(keyword);
-
-        // 发布社媒推广
-        await postTweet(product);
+        // 使用product-service生成产品
+        const product = await generateProductFromTrend(trend);
+        
+        // 使用shopify-service发布
+        const result = await publishProduct(product);
+        
+        if (result) {
+          published++;
+          console.log(`   ✅ ${result.store}: ${result.title}`);
+          
+          // 生成Twitter内容
+          const twitterContent = await generateTwitterContent(product);
+          console.log(`   🐦 Tweet ready`);
+          
+        } else {
+          skipped++;
+        }
 
         // 避免API限流
-        await sleep(2000);
+        await new Promise(r => setTimeout(r, 1000));
 
       } catch (error) {
-        console.error(`   ❌ Failed to process ${keyword}:`, error.message);
+        console.error(`   ❌ Failed:`, error.message);
+      }
+    }
+
+    console.log(`\n📈 Published: ${published}, Skipped: ${skipped}`);
+
+    // Step 4: 生成SEO文章
+    console.log("\n📝 Step 4: Creating SEO articles...");
+    const keywords = trends.slice(0, 3).map(t => t.name || t.title);
+    
+    for (const kw of keywords) {
+      try {
+        const article = await generateSEOArticle(kw);
+        console.log(`   📄 Article ready: ${article.title}`);
+      } catch (e) {
+        console.log(`   ⚠️ Article failed:`, e.message);
       }
     }
 
@@ -42,15 +88,22 @@ async function runDaily() {
     console.log(`\n✅ Pipeline completed in ${duration}s`);
 
   } catch (error) {
-    console.error("❌ Pipeline failed:", error);
+    console.error("\n💥 Pipeline failed:", error);
+    throw error;
   }
 }
 
 /**
- * 延迟函数
+ * 清理重复产品
  */
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+async function cleanupDuplicates() {
+  console.log("\n🧹 Starting cleanup...");
+  
+  for (const store of STORES) {
+    await removeDuplicates(store);
+  }
+  
+  console.log("✅ Cleanup complete");
 }
 
-module.exports = { runDaily };
+module.exports = { runDaily, cleanupDuplicates };
